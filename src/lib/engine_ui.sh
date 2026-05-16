@@ -14,11 +14,13 @@ _display_width() {
         c="${s:$i:1}"
         local code
         printf -v code '%d' "'$c" 2>/dev/null
-        # CJK / 全角 / Emoji 区域粗略判断（U+2000 以上）
-        if [ "$code" -gt 127 ] || [ "$code" -lt 0 ]; then
-            w=$((w + 2))
+        # CJK/全角/Emoji（U+2000+）= 2列，box-drawing（U+2500-257F）= 1列
+        if [ "$code" -ge 9472 ] && [ "$code" -le 9599 ]; then
+            w=$((w + 1))  # box-drawing chars
+        elif [ "$code" -gt 127 ] || [ "$code" -lt 0 ]; then
+            w=$((w + 2))  # CJK/emoji
         else
-            w=$((w + 1))
+            w=$((w + 1))  # ASCII
         fi
     done
     echo "$w"
