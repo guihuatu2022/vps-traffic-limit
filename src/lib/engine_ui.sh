@@ -150,14 +150,14 @@ function ui_box() {
     printf "┌%s┐\n" "$horiz"
 
     # 标题行（居左）
-    printf "│ %-*s│\n" "$((total_width - 3))" "$title"
+    printf "│ %s│\n" "$(_pad_to_width "$title" "$((total_width - 3))")"
 
     # 有内容行 → 分隔线 + 内容
     if [ ${#lines[@]} -gt 0 ]; then
         printf "├%s┤\n" "$horiz"
         local line
         for line in "${lines[@]}"; do
-            printf "│ %-*s│\n" "$((total_width - 3))" "$line"
+            printf "│ %s│\n" "$(_pad_to_width "$line" "$((total_width - 3))")"
         done
     fi
 
