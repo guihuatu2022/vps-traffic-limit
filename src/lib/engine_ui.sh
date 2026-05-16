@@ -279,6 +279,8 @@ function ui_show_status() {
 #   输入: 无 (从 vnstat -m 获取数据)
 function ui_show_report() {
     export LC_ALL=C 2>/dev/null || true
+    # 静默模式：抑制 awk stderr 输出
+    exec 2>/dev/null
     local interface="${INTERFACE:-$(detect_interface 2>/dev/null || echo ens4)}"
     local limit_gb="${LIMIT_GB:-0}"
     local direction="${DIRECTION:-egress}"
