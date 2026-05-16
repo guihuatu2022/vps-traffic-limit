@@ -341,9 +341,9 @@ except: pass
     header+="$(_pad_to_width "$h4" 10)│"
     header+="$(_pad_to_width "$h5" 20)"
 
-    content+=("${header//?/─}")  # 假装分隔线
+    local sep; sep=$(_repeat "─" 8); sep="${sep}┼"; sep="${sep}$(_repeat "─" 10)"; sep="${sep}┼"; sep="${sep}$(_repeat "─" 10)"; sep="${sep}┼"; sep="${sep}$(_repeat "─" 10)"; sep="${sep}┼"; sep="${sep}$(_repeat "─" 20)"; content+=("$sep")  # 假装分隔线
     content+=("$header")
-    content+=("${header//?/─}")
+    local sep; sep=$(_repeat "─" 8); sep="${sep}┼"; sep="${sep}$(_repeat "─" 10)"; sep="${sep}┼"; sep="${sep}$(_repeat "─" 10)"; sep="${sep}┼"; sep="${sep}$(_repeat "─" 10)"; sep="${sep}┼"; sep="${sep}$(_repeat "─" 20)"; content+=("$sep")
 
     local total_tx=0 total_rx=0 total_all=0 count=0
     local line month tx_val rx_val total_val tx_bytes rx_bytes
@@ -361,13 +361,13 @@ except: pass
 
         local status_text="🟢 正常"
         local pct
-        if [ "$(awk "BEGIN{print $ref_gb > $limit_gb}" 2>/dev/null)" = "1" ] && [ "$(awk "BEGIN{printf "%.2f", $limit_gb > 0}")" = "1" ]; then
+        if [ "$(awk "BEGIN{print $ref_gb > $limit_gb}" 2>/dev/null || echo 0)" = "1" ] && [ "$(awk "BEGIN{printf "%.2f", $limit_gb > 0}")" = "1" ]; then
             pct=$(awk "BEGIN{printf "%.2f", scale=0; $ref_gb * 100 / $limit_gb}")
             status_text="🔴 已锁定(超限 ${pct}%)"
-        elif [ "$(awk "BEGIN{print $ref_gb > $limit_gb * 0.95}" 2>/dev/null)" = "1" ] && [ "$(awk "BEGIN{printf "%.2f", $limit_gb > 0}")" = "1" ]; then
+        elif [ "$(awk "BEGIN{print $ref_gb > $limit_gb * 0.95}" 2>/dev/null || echo 0)" = "1" ] && [ "$(awk "BEGIN{printf "%.2f", $limit_gb > 0}")" = "1" ]; then
             pct=$(awk "BEGIN{printf "%.2f", scale=0; $ref_gb * 100 / $limit_gb}")
             status_text="🔴 极度接近(${pct}%)"
-        elif [ "$(awk "BEGIN{print $ref_gb > $limit_gb * 0.8}" 2>/dev/null)" = "1" ] && [ "$(awk "BEGIN{printf "%.2f", $limit_gb > 0}")" = "1" ]; then
+        elif [ "$(awk "BEGIN{print $ref_gb > $limit_gb * 0.8}" 2>/dev/null || echo 0)" = "1" ] && [ "$(awk "BEGIN{printf "%.2f", $limit_gb > 0}")" = "1" ]; then
             pct=$(awk "BEGIN{printf "%.2f", scale=0; $ref_gb * 100 / $limit_gb}")
             status_text="🟡 接近限额(${pct}%)"
         fi
@@ -387,7 +387,7 @@ except: pass
         count=$((count + 1))
     done <<< "$parsed"
 
-    content+=("${header//?/─}")
+    local sep; sep=$(_repeat "─" 8); sep="${sep}┼"; sep="${sep}$(_repeat "─" 10)"; sep="${sep}┼"; sep="${sep}$(_repeat "─" 10)"; sep="${sep}┼"; sep="${sep}$(_repeat "─" 10)"; sep="${sep}┼"; sep="${sep}$(_repeat "─" 20)"; content+=("$sep")
 
     # 合计
     local sum_line=""
