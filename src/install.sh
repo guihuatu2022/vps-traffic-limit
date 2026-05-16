@@ -81,7 +81,7 @@ install_auto_deps() {
     )
 
     install_echo "    ├─ apt-get update..."
-    apt-get update -qq 2>/dev/null || \
+    apt-get update -qq > /dev/null 2>&1 || \
         install_echo "    ${YELLOW}│  ⚠️  apt-get update 失败，继续尝试${NC}"
 
     for item in "${dep_items[@]}"; do
@@ -91,7 +91,7 @@ install_auto_deps() {
             install_echo "    ${GREEN}├─ ✅ $name 已存在${NC}"
         else
             install_echo "    ${YELLOW}├─ ⚠️  $name 未安装，正在安装...${NC}"
-            if apt-get install -y "$name" 2>/dev/null; then
+            if apt-get install -y "$name" > /dev/null 2>&1; then
                 install_echo "    ${GREEN}│  ✅ $name 安装成功${NC}"
             else
                 install_echo "    ${RED}│  ❌ $name 安装失败${NC}"

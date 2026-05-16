@@ -12,7 +12,10 @@
 #   llcx cron-check    → 定时检查入口
 # ===========================================
 
-set -e
+# ─── 非 root 自动提权 ───
+if [ "$(id -u)" -ne 0 ]; then
+    exec sudo "$0" "$@"
+fi
 
 # ─── 加载配置和引擎 ───
 CONF_DIR="/opt/vps-traffic-limit/conf"
