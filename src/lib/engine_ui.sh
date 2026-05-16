@@ -177,11 +177,14 @@ function ui_show_status() {
     local direction="${4:-${DIRECTION:-egress}}"
     local interface="${5:-${INTERFACE:-unknown}}"
     local mode="${6:-${MODE:-strict}}"
-    local locked="${7:-false}"
+    local locked="${7:-0}"
+    # 格式化锁定状态: 转 "true"/"false" 字符串为 0/1
+    [ "$locked" = "true" ] && locked=1
+    [ "$locked" = "false" ] && locked=0
 
     # 实际锁定状态检查（如果 fw_is_locked 可用）
-    if [ "$locked" = "false" ] && command -v fw_is_locked >/dev/null 2>&1; then
-        fw_is_locked && locked=true
+    if [ "$locked" = "0" ] && command -v fw_is_locked >/dev/null 2>&1; then
+        fw_is_locked && locked=1
     fi
 
     # 格式化数值
@@ -205,7 +208,7 @@ function ui_show_status() {
     local status_emoji status_text remain_text
     local extra_lines=()
 
-    if $locked; then
+    if [ "$locked" = "1" ] || [ "$locked" = "true" ]; then
         # 场景4/5: 已锁定
         status_emoji="🔒"
 
@@ -523,10 +526,10 @@ function ui_main_menu() {
 
                 local locked=false
                 if command -v fw_is_locked >/dev/null 2>&1; then
-                    fw_is_locked && locked=true
+                    fw_is_locked && locked=1
                 fi
 
-                if $locked; then
+                if [ "$locked" = "1" ] || [ "$locked" = "true" ]; then
                     status_emoji="🔒"
                     status_line="已锁定"
                 elif [ "$(awk "BEGIN{print ($pct >= $CRIT_PERCENT)}")" -eq 1 ]; then
@@ -628,7 +631,7 @@ function ui_status_menu() {
         fi
 
         if command -v fw_is_locked >/dev/null 2>&1; then
-            fw_is_locked && locked=true
+            fw_is_locked && locked=1
         fi
 
         ui_show_status "$used_gb" "$limit_gb" "$percent" "$DIRECTION" "$INTERFACE" "$MODE" "$locked"
@@ -636,7 +639,7 @@ function ui_status_menu() {
         echo ""
         # 操作栏
         local actions
-        if $locked; then
+        if [ "$locked" = "1" ] || [ "$locked" = "true" ]; then
             actions="  [1] 刷新  [2] 解锁  [3] 配置  [q] 返回上级"
         else
             actions="  [1] 刷新  [2] 锁定管理  [3] 配置  [q] 返回上级"
@@ -655,7 +658,7 @@ function ui_status_menu() {
         case "$choice" in
             1) continue ;;  # 刷新：重新循环
             2)
-                if $locked; then
+                if [ "$locked" = "1" ] || [ "$locked" = "true" ]; then
                     # 解锁
                     if command -v fw_unlock >/dev/null 2>&1; then
                         fw_unlock
@@ -706,7 +709,7 @@ function ui_lock_menu() {
 
         local locked=false
         if command -v fw_is_locked >/dev/null 2>&1; then
-            fw_is_locked && locked=true
+            fw_is_locked && locked=1
         fi
 
         local lock_status="🟢 未锁定"
