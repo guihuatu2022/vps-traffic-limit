@@ -196,7 +196,7 @@ install_select_interface() {
 
     install_echo "    │"
     install_echo -n "    └─ 选择网卡编号 [默认 1]: "
-    read -r iface_choice
+    read -r iface_choice || true
     [ -z "$iface_choice" ] && iface_choice=1
 
     # 检查选择是否在范围内 (bash if 条件)
@@ -237,7 +237,7 @@ install_detect_ssh() {
 
     install_echo "    ${GREEN}│  ✅ 检测到 SSH 端口: ${detected_ssh}${NC}"
     install_echo -n "    └─ 确认或修改 [${detected_ssh}]: "
-    read -r ssh_input
+    read -r ssh_input || true
     [ -z "$ssh_input" ] && ssh_input="$detected_ssh"
 
     # 校验端口
@@ -275,7 +275,7 @@ install_configure_limit() {
     install_echo "    ├─ 请输入您的 VPS 每月流量限额"
     install_echo "    │   (通常可以在云厂商控制台查看)"
     install_echo -n "    └─ 每月流量限额 (GB): "
-    read -r limit_input
+    read -r limit_input || true
 
     # 校验正整数
     if echo "$limit_input" | grep -qE '^[1-9][0-9]*$'; then
@@ -304,7 +304,7 @@ install_select_mode() {
     install_echo "    │     如需要保留 Web 服务(80/443)等"
     install_echo "    │"
     install_echo -n "    └─ 选择 [1] strict / [2] custom [默认 1]: "
-    read -r mode_choice
+    read -r mode_choice || true
 
     case "$mode_choice" in
         2|custom)
@@ -335,7 +335,7 @@ install_configure_ports() {
     install_echo "    │  格式: 80,443,30000-50000"
     install_echo "    │  支持逗号分隔的单端口和范围"
     install_echo -n "    └─ 放行端口: "
-    read -r ports_input
+    read -r ports_input || true
 
     # 校验端口
     local port_valid=1
@@ -392,7 +392,7 @@ install_select_direction() {
     install_echo "    │  3) ingress — 下行流量 (少见)"
     install_echo "    │"
     install_echo -n "    └─ 选择计费方向 [默认 1]: "
-    read -r dir_choice
+    read -r dir_choice || true
 
     case "$dir_choice" in
         2|total)
@@ -462,7 +462,7 @@ install_configure_notify() {
     install_echo "    │  4) serverchan — Server酱"
     install_echo "    │"
     install_echo -n "    └─ 选择通知渠道 [默认 0]: "
-    read -r notify_choice
+    read -r notify_choice || true
 
     case "$notify_choice" in
         1|telegram)
@@ -470,10 +470,10 @@ install_configure_notify() {
             install_echo ""
             install_echo "    ${CYAN}├─ Telegram 配置${NC}"
             echo -n "    ├─ Bot Token: "
-            read -r token
+            read -r token || true
             TELEGRAM_BOT_TOKEN="$token"
             echo -n "    ├─ Chat ID: "
-            read -r chat_id
+            read -r chat_id || true
             TELEGRAM_CHAT_ID="$chat_id"
             install_echo "    ${GREEN}│  ✅ Telegram 已配置${NC}"
             ;;
@@ -482,7 +482,7 @@ install_configure_notify() {
             install_echo ""
             install_echo "    ${CYAN}├─ 企业微信配置${NC}"
             echo -n "    ├─ Webhook URL: "
-            read -r webhook
+            read -r webhook || true
             WECHAT_WEBHOOK_URL="$webhook"
             install_echo "    ${GREEN}│  ✅ 企业微信已配置${NC}"
             ;;
@@ -491,7 +491,7 @@ install_configure_notify() {
             install_echo ""
             install_echo "    ${CYAN}├─ 邮件 SMTP 配置${NC}"
             echo -n "    ├─ SMTP 服务器:端口 [smtp.example.com:465]: "
-            read -r smtp
+            read -r smtp || true
             if [ -n "$smtp" ]; then
                 local smtp_server="${smtp%%:*}"
                 local smtp_port="${smtp##*:}"
@@ -499,17 +499,17 @@ install_configure_notify() {
                 echo "$smtp_port" | grep -qE '^[0-9]+$' && EMAIL_SMTP_PORT="$smtp_port"
             fi
             echo -n "    ├─ SMTP 用户名: "
-            read -r smtp_user
+            read -r smtp_user || true
             EMAIL_SMTP_USER="$smtp_user"
             echo -n "    ├─ SMTP 密码: "
-            read -r smtp_pass
+            read -r smtp_pass || true
             EMAIL_SMTP_PASS="$smtp_pass"
             echo -n "    ├─ 发件人地址 [${EMAIL_SMTP_USER}]: "
-            read -r from
+            read -r from || true
             [ -z "$from" ] && from="$EMAIL_SMTP_USER"
             EMAIL_FROM="$from"
             echo -n "    ├─ 收件人地址: "
-            read -r to
+            read -r to || true
             EMAIL_TO="$to"
             install_echo "    ${GREEN}│  ✅ 邮件已配置${NC}"
             ;;
@@ -518,7 +518,7 @@ install_configure_notify() {
             install_echo ""
             install_echo "    ${CYAN}├─ Server酱配置${NC}"
             echo -n "    ├─ SendKey: "
-            read -r sckey
+            read -r sckey || true
             SERVERCHAN_KEY="$sckey"
             install_echo "    ${GREEN}│  ✅ Server酱已配置${NC}"
             ;;
@@ -541,7 +541,7 @@ install_configure_notify() {
 install_configure_cmd() {
     install_echo "  ${CYAN}┌─ 快捷命令 ────────────────────────────┐${NC}"
     install_echo -n "    └─ 命令名称 [${CMD_LLCX}]: "
-    read -r cmd_input
+    read -r cmd_input || true
     [ -n "$cmd_input" ] && CMD_LLCX="$cmd_input"
     install_echo "    ${GREEN}│  ✅ 快捷命令: ${CMD_LLCX}${NC}"
     install_echo "    ${CYAN}└──────────────────────────────────────────┘${NC}"
@@ -1231,7 +1231,7 @@ main() {
 
     if ! $AUTO_YES && ! $DRY_RUN; then
         echo -n "  确认安装以上配置? [Y/n]: "
-        read -r confirm
+        read -r confirm || true
         case "$confirm" in
             n|N|no|NO)
                 install_echo ""
