@@ -278,6 +278,7 @@ function ui_show_status() {
 # ui_show_report: 显示 llcx -r 月度汇总
 #   输入: 无 (从 vnstat -m 获取数据)
 function ui_show_report() {
+    export LC_ALL=C 2>/dev/null || true
     local interface="${INTERFACE:-$(detect_interface 2>/dev/null || echo ens4)}"
     local limit_gb="${LIMIT_GB:-0}"
     local direction="${DIRECTION:-egress}"
@@ -361,14 +362,14 @@ except: pass
 
         local status_text="🟢 正常"
         local pct
-        if [ "$(awk "BEGIN{print $ref_gb > $limit_gb}" 2>/dev/null || echo 0)" = "1" ] && [ "$(awk "BEGIN{printf "%.2f", $limit_gb > 0}")" = "1" ]; then
-            pct=$(awk "BEGIN{printf "%.2f", scale=0; $ref_gb * 100 / $limit_gb}")
+        if [ "$(awk 2>/dev/null || echo 0 "BEGIN{print $ref_gb > $limit_gb}" 2>/dev/null || echo 0)" = "1" ] && [ "$(awk "BEGIN{printf "%.2f", $limit_gb > 0}")" = "1" ]; then
+            pct=$(awk 2>/dev/null || echo 0 "BEGIN{printf "%.2f", scale=0; $ref_gb * 100 / $limit_gb}")
             status_text="🔴 已锁定(超限 ${pct}%)"
-        elif [ "$(awk "BEGIN{print $ref_gb > $limit_gb * 0.95}" 2>/dev/null || echo 0)" = "1" ] && [ "$(awk "BEGIN{printf "%.2f", $limit_gb > 0}")" = "1" ]; then
-            pct=$(awk "BEGIN{printf "%.2f", scale=0; $ref_gb * 100 / $limit_gb}")
+        elif [ "$(awk 2>/dev/null || echo 0 "BEGIN{print $ref_gb > $limit_gb * 0.95}" 2>/dev/null || echo 0)" = "1" ] && [ "$(awk "BEGIN{printf "%.2f", $limit_gb > 0}")" = "1" ]; then
+            pct=$(awk 2>/dev/null || echo 0 "BEGIN{printf "%.2f", scale=0; $ref_gb * 100 / $limit_gb}")
             status_text="🔴 极度接近(${pct}%)"
-        elif [ "$(awk "BEGIN{print $ref_gb > $limit_gb * 0.8}" 2>/dev/null || echo 0)" = "1" ] && [ "$(awk "BEGIN{printf "%.2f", $limit_gb > 0}")" = "1" ]; then
-            pct=$(awk "BEGIN{printf "%.2f", scale=0; $ref_gb * 100 / $limit_gb}")
+        elif [ "$(awk 2>/dev/null || echo 0 "BEGIN{print $ref_gb > $limit_gb * 0.8}" 2>/dev/null || echo 0)" = "1" ] && [ "$(awk "BEGIN{printf "%.2f", $limit_gb > 0}")" = "1" ]; then
+            pct=$(awk 2>/dev/null || echo 0 "BEGIN{printf "%.2f", scale=0; $ref_gb * 100 / $limit_gb}")
             status_text="🟡 接近限额(${pct}%)"
         fi
 
