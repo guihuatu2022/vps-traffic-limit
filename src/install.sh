@@ -1190,7 +1190,7 @@ main() {
     # 这里处理正常安装流程
 
     # ─── 欢迎页 ───
-    clear
+    clear 2>&1 || true
     install_echo ""
     install_echo "  ${BOLD}${CYAN}╔══════════════════════════════════════════╗${NC}"
     install_echo "  ${BOLD}${CYAN}║         🛡️  VPS 流量监控系统${NC}"
@@ -1215,6 +1215,8 @@ main() {
     install_echo "  ${BOLD}--- 步骤 3: 配置信息收集 ---${NC}"
     install_echo ""
 
+    # AUTO_YES: redirect all reads to /dev/null (trigger defaults)
+    $AUTO_YES && exec < /dev/null
     install_select_interface
     install_detect_ssh
     install_configure_limit
