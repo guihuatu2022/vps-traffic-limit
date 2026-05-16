@@ -27,21 +27,19 @@
 在 VPS 上执行：
 
 ```bash
-git clone https://github.com/guihuatu2022/vps-traffic-limit.git
-cd vps-traffic-limit/src
-sudo bash install.sh
+curl -fsSL https://raw.githubusercontent.com/guihuatu2022/vps-traffic-limit/main/src/install.sh | sudo bash
 ```
+
+> 不想交互？一行搞定全部默认配置：
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/guihuatu2022/vps-traffic-limit/main/src/install.sh | sudo bash -s -- --yes
+> ```
 
 安装过程会：
 1. ✅ 自动检测你的网卡和 SSH 端口
 2. ✅ 自动安装所需依赖（vnstat、python3、curl）
 3. ✅ 一步一步引导你配置限额和通知
 4. ✅ 部署完成后立即开始监控
-
-> 不想交互？一行搞定全部默认配置：
-> ```bash
-> sudo bash install.sh --yes
-> ```
 
 ---
 

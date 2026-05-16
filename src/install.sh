@@ -19,6 +19,7 @@ NC='\033[0m' # No Color
 # ─── 全局变量 ──────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 INSTALL_DIR="/opt/vps-traffic-limit"
+GITHUB_RAW="https://raw.githubusercontent.com/guihuatu2022/vps-traffic-limit/main/src"
 BIN_DIR="${INSTALL_DIR}/bin"
 LIB_DIR="${INSTALL_DIR}/lib"
 CONF_DIR="${INSTALL_DIR}/conf"
@@ -770,12 +771,28 @@ install_execute() {
         local dst="${entry##*:}"
         local src_path="${SCRIPT_DIR}/${src}"
 
-        if [ ! -f "$src_path" ]; then
-            install_echo "    ${RED}├─ ❌ 源文件不存在: ${src_path}${NC}"
-            install_echo "    ${RED}│   安装中止${NC}"
-            exit 1
-        fi
 
+        if [ ! -f "$src_path" ]; then
+            # 本地不存在，尝试从 GitHub 下载
+            local dl_url="${GITHUB_RAW}/${src}"
+            install_echo "    ${YELLOW}├─ ⚠️  本地未找到 ${src}，尝试从 GitHub 下载...${NC}"
+            if command -v curl >/dev/null 2>&1; then
+                curl -fsSL -o "/tmp/vtl_$(echo "$src" | tr '/' '_')" "$dl_url" 2>/dev/null && {
+                    mkdir -p "$(dirname "$src_path")"
+                    cp "/tmp/vtl_$(echo "$src" | tr '/' '_')" "$src_path"
+                    rm -f "/tmp/vtl_$(echo "$src" | tr '/' '_')"
+                    install_echo "    ${GREEN}├─ ✅ 下载成功: ${src}${NC}"
+                } || {
+                    install_echo "    ${RED}├─ ❌ 下载失败: ${dl_url}${NC}"
+                    install_echo "    ${RED}│   请检查网络或使用 git clone 方式安装${NC}"
+                    exit 1
+                }
+            else
+                install_echo "    ${RED}├─ ❌ 没有 curl 也无法找到本地 ${src}${NC}"
+                install_echo "    ${RED}│   请先安装 curl 或使用 git clone 方式安装${NC}"
+                exit 1
+            fi
+        fi
         if $DRY_RUN; then
             install_echo "    ${YELLOW}│  [DRY-RUN] cp ${src_path} → ${dst}${NC}"
         else
