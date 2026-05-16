@@ -275,229 +275,142 @@ function ui_show_status() {
 
 # ui_show_report: 显示 llcx -r 月度汇总
 #   输入: 无 (从 vnstat -m 获取数据)
+function ui_main_menu() {
+# ui_show_report: 显示 llcx -r 月度汇总
+#   输入: 无 (从 vnstat -m 获取数据)
 function ui_show_report() {
     local interface="${INTERFACE:-$(detect_interface 2>/dev/null || echo ens4)}"
     local limit_gb="${LIMIT_GB:-0}"
     local direction="${DIRECTION:-egress}"
 
-    # 方向说明
     local dir_label="上行"
     [ "$direction" = "ingress" ] && dir_label="下行"
     [ "$direction" = "total" ] && dir_label="合计"
 
-    # 窄终端降级
-    if $IS_NARROW; then
-        echo ""
-        echo "📅 月度流量汇总 · 历史数据"
-        echo "网卡: ${interface}    计费方向: ${direction} (${dir_label})"
-        echo "----------------------------------------"
-
-        if ! command -v vnstat >/dev/null 2>&1; then
-            echo "❌ vnstat 未安装，无法获取月度数据"
-            return 1
-        fi
-
-        local raw
-        raw=$(vnstat -i "$interface" -m 2>/dev/null | tail -n +5)
-        if [ -z "$raw" ]; then
-            echo "暂无月度流量数据"
-            return
-        fi
-
-        local total_rx=0 total_tx=0 total_all=0
-        local rx tx total line month_raw year_full
-        while IFS= read -r line; do
-            [ -z "$line" ] && continue
-            month_raw=$(echo "$line" | awk '{print $1}')
-            rx=$(echo "$line" | awk '{print $2, $3}')
-            tx=$(echo "$line" | awk '{print $4, $5}')
-            total=$(echo "$line" | awk '{print $6, $7}')
-            echo "${month_raw}: 下行=${rx}  上行=${tx}  合计=${total}"
-        done <<< "$raw"
-
-        echo "----------------------------------------"
-        echo "[q] 返回"
-        return
-    fi
-
-    # ─── 正常宽度：渲染表格 ───
     if ! command -v vnstat >/dev/null 2>&1; then
-        ui_box "📅 月度流量汇总 · 历史数据" "" "❌ vnstat 未安装，无法获取月度数据" ""
+        ui_box "📅 月度流量汇总 · 历史数据" "" "❌ vnstat 未安装" ""
         return 1
     fi
 
-    local raw
-    raw=$(vnstat -i "$interface" -m 2>/dev/null | tail -n +5)
-    if [ -z "$raw" ]; then
-        ui_box "📅 月度流量汇总 · 历史数据" "" "暂无月度流量数据" ""
+    # 用 python3 解析 vnstat -m --json，更稳定
+    local json_data
+    json_data=$(vnstat -i "$interface" -m --json 2>/dev/null)
+    if [ -z "$json_data" ]; then
+        ui_box "📅 月度流量汇总 · 历史数据" "" "暂无月度数据（vnstat 数据采集中）" ""
         return
     fi
 
-    # 表头
-    local h1="月份" h2="${dir_label}" h3="下行" h4="合计" h5="状态"
-    # 列宽
-    local cw1=8 cw2=10 cw3=10 cw4=10 cw5=20
-    # 注意: 当前输出和下行固定，上行按 direction 显示
-    # 但 vnstat 输出 rx=下行, tx=上行
+    local parsed
+    parsed=$(echo "$json_data" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    for iface in data['interfaces']:
+        if iface['name'] == '$interface':
+            months = iface['traffic']['month']
+            for m in months:
+                y = m['date']['year']
+                mo = m['date']['month']
+                rx = m['rx']
+                tx = m['tx']
+                total = tx + rx
+                rx_gb = rx / 1073741824.0
+                tx_gb = tx / 1073741824.0
+                total_gb = total / 1073741824.0
+                print(f'{y:04d}-{mo:02d}|{tx_gb:.2f}|{rx_gb:.2f}|{total_gb:.2f}|{tx}|{rx}')
+            break
+except: pass
+" 2>/dev/null)
 
+    if [ -z "$parsed" ]; then
+        ui_box "📅 月度流量汇总 · 历史数据" "" "暂无月度数据" ""
+        return
+    fi
+
+    # 构建表格内容
     local content=()
-    content+=("网卡: ${interface}                    计费方向: ${direction} (${dir_label})")
+    content+=("网卡: ${interface}    计费方向: ${direction} (${dir_label})")
 
-    # 表格分隔行
-    local sep_line=""
-    sep_line+=$(_repeat "─" $cw1)
-    sep_line+="┬"
-    sep_line+=$(_repeat "─" $cw2)
-    sep_line+="┬"
-    sep_line+=$(_repeat "─" $cw3)
-    sep_line+="┬"
-    sep_line+=$(_repeat "─" $cw4)
-    sep_line+="┬"
-    sep_line+=$(_repeat "─" $cw5)
-    sep_line+="─"
+    local sep="${cw1:-8}─┬─── ──┬─── ──┬─── ──┬─── ──"
 
-    # 表头行
-    local header_line=""
-    header_line+="$(_pad_to_width "$h1" $((cw1)))"
-    header_line+="│"
-    header_line+="$(_pad_to_width "$h2" $((cw2)))"
-    header_line+="│"
-    header_line+="$(_pad_to_width "$h3" $((cw3)))"
-    header_line+="│"
-    header_line+="$(_pad_to_width "$h4" $((cw4)))"
-    header_line+="│"
-    header_line+="$(_pad_to_width "$h5" $((cw5)))"
+    local h1="月份" h2="${dir_label}" h3="下行" h4="合计" h5="状态"
 
-    content+=("$sep_line")
-    content+=("$header_line")
-    content+=("$sep_line")
+    local header=""
+    header+="$(_pad_to_width "$h1" 8)│"
+    header+="$(_pad_to_width "$h2" 10)│"
+    header+="$(_pad_to_width "$h3" 10)│"
+    header+="$(_pad_to_width "$h4" 10)│"
+    header+="$(_pad_to_width "$h5" 20)"
 
-    # 解析数据行
-    local total_tx=0 total_rx=0 total_all=0
-    local count=0
-    local month_raw rx_val rx_unit tx_val tx_unit total_val total_unit
-    local line
+    content+=("${header//?/─}")  # 假装分隔线
+    content+=("$header")
+    content+=("${header//?/─}")
 
-    while IFS= read -r line; do
-        [ -z "$line" ] && continue
-        month_raw=$(echo "$line" | awk '{print $1}')
-        rx_val=$(echo "$line" | awk '{print $2}')
-        rx_unit=$(echo "$line" | awk '{print $3}')
-        tx_val=$(echo "$line" | awk '{print $4}')
-        tx_unit=$(echo "$line" | awk '{print $5}')
-        total_val=$(echo "$line" | awk '{print $6}')
-        total_unit=$(echo "$line" | awk '{print $7}')
+    local total_tx=0 total_rx=0 total_all=0 count=0
+    local line month tx_val rx_val total_val tx_bytes rx_bytes
 
-        # 统一转为 GB
-        local rx_gb tx_gb total_gb
-        rx_gb=$(awk "BEGIN{
-            v=$rx_val; u=\"$rx_unit\";
-            if(u==\"GiB\") print v;
-            else if(u==\"MiB\") print v/1024;
-            else if(u==\"TiB\") print v*1024;
-            else print 0;
-        }")
-        tx_gb=$(awk "BEGIN{
-            v=$tx_val; u=\"$tx_unit\";
-            if(u==\"GiB\") print v;
-            else if(u==\"MiB\") print v/1024;
-            else if(u==\"TiB\") print v*1024;
-            else print 0;
-        }")
-        total_gb=$(awk "BEGIN{
-            v=$total_val; u=\"$total_unit\";
-            if(u==\"GiB\") print v;
-            else if(u==\"MiB\") print v/1024;
-            else if(u==\"TiB\") print v*1024;
-            else print 0;
-        }")
+    while IFS='|' read -r month tx_val rx_val total_val tx_bytes rx_bytes; do
+        [ -z "$month" ] && continue
+        tx_val=$(printf "%.2f" "$tx_val")
+        rx_val=$(printf "%.2f" "$rx_val")
+        total_val=$(printf "%.2f" "$total_val")
 
-        # 按方向取参考值
         local ref_gb=0
-        [ "$direction" = "egress" ] && ref_gb=$tx_gb
-        [ "$direction" = "ingress" ] && ref_gb=$rx_gb
-        [ "$direction" = "total" ] && ref_gb=$total_gb
+        [ "$direction" = "egress" ] && ref_gb=$tx_val
+        [ "$direction" = "ingress" ] && ref_gb=$rx_val
+        [ "$direction" = "total" ] && ref_gb=$total_val
 
-        # 状态
-        local status_text
-        if [ "$(awk "BEGIN{print ($ref_gb >= $limit_gb)}")" -eq 1 ] && [ "$limit_gb" -gt 0 ]; then
-            status_text="🔴 已锁定(超限)"
-        elif [ "$(awk "BEGIN{print ($ref_gb >= $limit_gb * $CRIT_PERCENT / 100)}")" -eq 1 ] && [ "$limit_gb" -gt 0 ]; then
-            local pct
-            pct=$(awk "BEGIN{printf \"%.0f\", $ref_gb / $limit_gb * 100}")
+        local status_text="🟢 正常"
+        local pct
+        if [ "$(awk "BEGIN{print $ref_gb > $limit_gb}" 2>/dev/null)" = "1" ] && [ "$(awk "BEGIN{printf "%.2f", $limit_gb > 0}")" = "1" ]; then
+            pct=$(awk "BEGIN{printf "%.2f", scale=0; $ref_gb * 100 / $limit_gb}")
+            status_text="🔴 已锁定(超限 ${pct}%)"
+        elif [ "$(awk "BEGIN{print $ref_gb > $limit_gb * 0.95}" 2>/dev/null)" = "1" ] && [ "$(awk "BEGIN{printf "%.2f", $limit_gb > 0}")" = "1" ]; then
+            pct=$(awk "BEGIN{printf "%.2f", scale=0; $ref_gb * 100 / $limit_gb}")
             status_text="🔴 极度接近(${pct}%)"
-        elif [ "$(awk "BEGIN{print ($ref_gb >= $limit_gb * $WARN_PERCENT / 100)}")" -eq 1 ] && [ "$limit_gb" -gt 0 ]; then
-            local pct
-            pct=$(awk "BEGIN{printf \"%.0f\", $ref_gb / $limit_gb * 100}")
+        elif [ "$(awk "BEGIN{print $ref_gb > $limit_gb * 0.8}" 2>/dev/null)" = "1" ] && [ "$(awk "BEGIN{printf "%.2f", $limit_gb > 0}")" = "1" ]; then
+            pct=$(awk "BEGIN{printf "%.2f", scale=0; $ref_gb * 100 / $limit_gb}")
             status_text="🟡 接近限额(${pct}%)"
-        else
-            status_text="🟢 正常"
         fi
 
-        # 格式化
-        local rx_fmt tx_fmt total_fmt
-        rx_fmt=$(awk "BEGIN{printf \"%.2f\", $rx_gb}")
-        tx_fmt=$(awk "BEGIN{printf \"%.2f\", $tx_gb}")
-        total_fmt=$(awk "BEGIN{printf \"%.2f\", $total_gb}")
-
         local data_line=""
-        data_line+="$(_pad_to_width "$month_raw" $((cw1)))"
-        data_line+="│"
-        data_line+="$(_pad_to_width "$tx_fmt" $((cw2)))"
-        data_line+="│"
-        data_line+="$(_pad_to_width "$rx_fmt" $((cw3)))"
-        data_line+="│"
-        data_line+="$(_pad_to_width "$total_fmt" $((cw4)))"
-        data_line+="│"
-        data_line+="$(_pad_to_width "$status_text" $((cw5)))"
+        data_line+="$(_pad_to_width "$month" 8)│"
+        data_line+="$(_pad_to_width "$tx_val" 10)│"
+        data_line+="$(_pad_to_width "$rx_val" 10)│"
+        data_line+="$(_pad_to_width "$total_val" 10)│"
+        data_line+="$(_pad_to_width "$status_text" 20)"
 
         content+=("$data_line")
 
-        # 累加
-        total_tx=$(awk "BEGIN{print $total_tx + $tx_gb}")
-        total_rx=$(awk "BEGIN{print $total_rx + $rx_gb}")
-        total_all=$(awk "BEGIN{print $total_all + $total_gb}")
+        total_tx=$(awk "BEGIN{printf "%.2f", $total_tx + $tx_val}")
+        total_rx=$(awk "BEGIN{printf "%.2f", $total_rx + $rx_val}")
+        total_all=$(awk "BEGIN{printf "%.2f", $total_all + $total_val}")
         count=$((count + 1))
-    done <<< "$raw"
+    done <<< "$parsed"
 
-    # 表尾分隔
-    content+=("$sep_line")
+    content+=("${header//?/─}")
 
-    # 合计行
+    # 合计
     local sum_line=""
-    sum_line+="$(_pad_to_width "合计" $((cw1)))"
-    sum_line+="│"
-    sum_line+="$(_pad_to_width "$(awk "BEGIN{printf \"%.2f\", $total_tx}")" $((cw2)))"
-    sum_line+="│"
-    sum_line+="$(_pad_to_width "$(awk "BEGIN{printf \"%.2f\", $total_rx}")" $((cw3)))"
-    sum_line+="│"
-    sum_line+="$(_pad_to_width "$(awk "BEGIN{printf \"%.2f\", $total_all}")" $((cw4)))"
-    sum_line+="│"
-    sum_line+="$(_pad_to_width "" $((cw5)))"
+    sum_line+="$(_pad_to_width "合计" 8)│"
+    sum_line+="$(_pad_to_width "$(printf "%.2f" "$total_tx")" 10)│"
+    sum_line+="$(_pad_to_width "$(printf "%.2f" "$total_rx")" 10)│"
+    sum_line+="$(_pad_to_width "$(printf "%.2f" "$total_all")" 10)│"
+    sum_line+="$(_pad_to_width "" 20)"
     content+=("$sum_line")
 
-    # 月均行
     if [ "$count" -gt 0 ]; then
         local avg_line=""
-        avg_line+="$(_pad_to_width "月均" $((cw1)))"
-        avg_line+="│"
-        avg_line+="$(_pad_to_width "$(awk "BEGIN{printf \"%.2f\", $total_tx / $count}")" $((cw2)))"
-        avg_line+="│"
-        avg_line+="$(_pad_to_width "$(awk "BEGIN{printf \"%.2f\", $total_rx / $count}")" $((cw3)))"
-        avg_line+="│"
-        avg_line+="$(_pad_to_width "$(awk "BEGIN{printf \"%.2f\", $total_all / $count}")" $((cw4)))"
-        avg_line+="│"
-        avg_line+="$(_pad_to_width "" $((cw5)))"
+        avg_line+="$(_pad_to_width "月均" 8)│"
+        avg_line+="$(_pad_to_width "$(printf "%.2f" "$(awk "BEGIN{printf "%.2f", $total_tx / $count}" -l)")" 10)│"
+        avg_line+="$(_pad_to_width "$(printf "%.2f" "$(awk "BEGIN{printf "%.2f", $total_rx / $count}" -l)")" 10)│"
+        avg_line+="$(_pad_to_width "$(printf "%.2f" "$(awk "BEGIN{printf "%.2f", $total_all / $count}" -l)")" 10)│"
+        avg_line+="$(_pad_to_width "" 20)"
         content+=("$avg_line")
     fi
 
     ui_box "📅 月度流量汇总 · 历史数据" "${content[@]}"
 }
-
-# ─── 菜单函数 ───
-
-# ui_main_menu: 主菜单
-function ui_main_menu() {
     ui_detect_term
     while true; do
         clear
