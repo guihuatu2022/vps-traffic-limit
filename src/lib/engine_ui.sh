@@ -275,7 +275,6 @@ function ui_show_status() {
 
 # ui_show_report: 显示 llcx -r 月度汇总
 #   输入: 无 (从 vnstat -m 获取数据)
-function ui_main_menu() {
 # ui_show_report: 显示 llcx -r 月度汇总
 #   输入: 无 (从 vnstat -m 获取数据)
 function ui_show_report() {
@@ -411,6 +410,8 @@ except: pass
 
     ui_box "📅 月度流量汇总 · 历史数据" "${content[@]}"
 }
+function ui_main_menu() {
+    local IS_NARROW=${IS_NARROW:-false}
     ui_detect_term
     while true; do
         clear
