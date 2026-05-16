@@ -1212,11 +1212,10 @@ main() {
 
     # ─── 交互配置 ───
     # 如果所有参数都已通过命令行提供，则跳过交互式提问
+    $AUTO_YES && exec < /dev/null
     install_echo "  ${BOLD}--- 步骤 3: 配置信息收集 ---${NC}"
     install_echo ""
 
-    # AUTO_YES: redirect all reads to /dev/null (trigger defaults)
-    $AUTO_YES && exec < /dev/null
     install_select_interface
     install_detect_ssh
     install_configure_limit
