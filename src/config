@@ -1,0 +1,47 @@
+# /opt/vps-traffic-limit/conf/config
+# ===========================================
+# VTL 核心配置 v5.0
+# 权限: 600 (root only)
+# ===========================================
+
+# [ 网络 ]
+INTERFACE="ens4"
+SSH_PORTS="22"
+
+# [ 流量与计费 ]
+LIMIT_GB=170
+DIRECTION="egress"        # egress | total | ingress
+
+# [ 锁定策略 ]
+MODE="strict"             # strict | custom
+EXTRA_PORTS=""            # custom 模式: "80,443,30000-50000"
+IPV6_POLICY="dual"        # dual | ipv4_only
+
+# [ 计费周期同步 ]
+PROVIDER_TIMEZONE="UTC"
+RESET_DAY=1
+
+# [ 通知 ]
+NOTIFY_CHANNEL="none"     # none | telegram | wechat | email | serverchan
+TELEGRAM_BOT_TOKEN=""
+TELEGRAM_CHAT_ID=""
+WECHAT_WEBHOOK_URL=""
+EMAIL_SMTP_SERVER=""
+EMAIL_SMTP_PORT="465"
+EMAIL_SMTP_USER=""
+EMAIL_SMTP_PASS=""
+EMAIL_FROM=""
+EMAIL_TO=""
+SERVERCHAN_KEY=""
+
+# [ 阈值 ]
+WARN_PERCENT=80
+CRIT_PERCENT=95
+
+# [ 运行时常量 ]
+VTL_CHAIN_NAME="VTL-LOCK"
+LOCK_STATE_FILE="/run/vps-traffic-limit/locked.state"
+LOCK_FILE="/run/vps-traffic-limit/vtl.lock"
+LOG_FILE="/var/log/vtl-core.log"
+CONF_DIR="/opt/vps-traffic-limit/conf"
+LIB_DIR="/opt/vps-traffic-limit/lib"

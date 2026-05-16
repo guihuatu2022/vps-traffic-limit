@@ -1,0 +1,119 @@
+#!/bin/bash
+# ===========================================
+# llcx — VPS 流量监控系统入口
+# v5.0
+# 用法:
+#   llcx              → 交互菜单
+#   llcx -c / --check  → 直接查流量
+#   llcx -r / --report → 直接查历史
+#   llcx lock          → 直接锁定
+#   llcx unlock        → 直接解锁
+#   llcx test-notify   → 测试通知
+#   llcx cron-check    → 定时检查入口
+# ===========================================
+
+set -e
+
+# ─── 加载配置和引擎 ───
+CONF_DIR="/opt/vps-traffic-limit/conf"
+LIB_DIR="/opt/vps-traffic-limit/lib"
+
+[ -f "$CONF_DIR/config" ] && source "$CONF_DIR/config"
+[ -f "$LIB_DIR/common.sh" ] && source "$LIB_DIR/common.sh"
+[ -f "$LIB_DIR/engine_ui.sh" ] && source "$LIB_DIR/engine_ui.sh"
+[ -f "$LIB_DIR/engine_firewall.sh" ] && source "$LIB_DIR/engine_firewall.sh"
+[ -f "$LIB_DIR/engine_notify.sh" ] && source "$LIB_DIR/engine_notify.sh"
+[ -f "$LIB_DIR/engine_check.sh" ] && source "$LIB_DIR/engine_check.sh"
+
+# ─── 参数解析 ───
+CMD="${1:-menu}"
+
+case "$CMD" in
+    -c|--check)
+        # 直接查流量
+        ui_detect_term
+        check_get_traffic 2>/dev/null
+        fw_is_locked && IS_LOCKED=1 || IS_LOCKED=0
+        ui_show_status "$USED_GB" "$LIMIT_GB" "${USED_PERCENT:-0}" "$DIRECTION" "$INTERFACE" "$MODE" "$IS_LOCKED"
+        ;;
+
+    -r|--report)
+        # 直接查历史
+        ui_detect_term
+        ui_show_report
+        ;;
+
+    lock)
+        # 直接锁定
+        if ! detect_root; then
+            echo "❌ 需要 root 权限"
+            exit 1
+        fi
+        detect_firewall
+        if fw_is_locked; then
+            echo "🔒 已经处于锁定状态"
+        else
+            fw_lock && {
+                echo "$(date +%s)" > "$LOCK_STATE_FILE"
+                echo "✅ 已锁定（仅 SSH+DNS 放行）"
+                notify_send lock "手动锁定" 2>/dev/null || true
+                log_write "LOCK" "用户手动锁定"
+            } || echo "❌ 锁定失败"
+        fi
+        ;;
+
+    unlock)
+        # 直接解锁
+        if ! detect_root; then
+            echo "❌ 需要 root 权限"
+            exit 1
+        fi
+        if fw_is_locked; then
+            fw_unlock && {
+                rm -f "$LOCK_STATE_FILE"
+                echo "✅ 已解锁，网络已恢复"
+                notify_send unlock "手动解锁" 2>/dev/null || true
+                log_write "UNLOCK" "用户手动解锁"
+            } || echo "❌ 解锁失败"
+        else
+            echo "🟢 当前未锁定"
+        fi
+        ;;
+
+    test-notify)
+        # 测试通知
+        if ! detect_root; then
+            echo "❌ 需要 root 权限"
+            exit 1
+        fi
+        notify_send_test
+        ;;
+
+    cron-check)
+        # 定时器入口 — 非交互，静默执行
+        if ! detect_root; then
+            log_write "ERROR" "cron-check 需要 root 权限"
+            exit 1
+        fi
+        check_cron
+        ;;
+
+    menu|"")
+        # 交互菜单
+        ui_detect_term
+        ui_main_menu
+        ;;
+
+    *)
+        echo "用法: llcx [选项]"
+        echo ""
+        echo "  无参数      打开交互菜单"
+        echo "  -c, --check     直接查本月流量"
+        echo "  -r, --report    直接查历史汇总"
+        echo "  lock            手动锁定"
+        echo "  unlock          手动解锁"
+        echo "  test-notify     发送测试通知"
+        echo ""
+        exit 1
+        ;;
+esac
